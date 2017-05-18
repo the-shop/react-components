@@ -25252,7 +25252,29 @@ let GanttChart = React.createClass({
     displayName: 'GanttChart',
 
     getInitialState() {
-        return { searchText: "", searchSelect: "", newTaskInput: "" };
+        return {
+            taskList: { taskList },
+            timeRange: [],
+            searchText: "",
+            searchSelect: "",
+            newTaskInput: ""
+        };
+    },
+    componentWillMount() {
+        let startDates = [];
+        let endDates = [];
+        let taskListObject = this.state.taskList;
+        for (let task of taskListObject.taskList) {
+            startDates.push(task.startDate);
+            endDates.push(task.endDate);
+        }
+        let uniqueStartDates = [...new Set(startDates)];
+        let uniqueEndDates = [...new Set(endDates)];
+
+        let rowsStartDateUnix = Math.min.apply(Math, uniqueStartDates);
+        let rowsEndDateUnix = Math.min.apply(Math, uniqueEndDates);
+
+        this.setState({ timeRange: this.generateTimeRange(Moment.unix(rowsStartDateUnix), Moment.unix(rowsEndDateUnix)) });
     },
     onSearchChange(e) {
         this.setState({ searchText: e.target.value });
@@ -25264,35 +25286,22 @@ let GanttChart = React.createClass({
     onClickNewTask() {},
     // Select display type, chart or list
     onSelectDisplayType() {},
-    renderChartHeadRows(taskList) {
-        let startDates = [];
-        let endDates = [];
-        for (let task of taskList) {
-            startDates.push(task.startDate);
-            endDates.push(task.endDate);
+    // Recursive function to generate time range between two Moment objects
+    generateTimeRange(momentStartDate, momentEndDate, result = []) {
+        if (momentStartDate.isBefore(momentEndDate)) {
+            result.push(momentStartDate.unix());
+            momentStartDate.add(1, 'day');
+            return this.generateTimeRange(momentStartDate, momentEndDate, result);
+        } else {
+            return result;
         }
-        let uniqueStartDates = [...new Set(startDates)];
-        let uniqueEndDates = [...new Set(endDates)];
-
-        let rowsStartDateUnix = Math.min.apply(Math, uniqueStartDates);
-        let rowsEndDateUnix = Math.min.apply(Math, uniqueEndDates);
-
-        // Recursive function to generate time range between two Moment objects
-        function generateTimeRange(momentStartDate, momentEndDate, result = []) {
-            if (momentStartDate.isBefore(momentEndDate)) {
-                result.push(momentStartDate.unix());
-                momentStartDate.add(1, 'day');
-                return generateTimeRange(momentStartDate, momentEndDate, result);
-            } else {
-                return result;
-            }
-        }
-
-        let timeRangeArray = generateTimeRange(Moment.unix(rowsStartDateUnix), Moment.unix(rowsEndDateUnix));
+    },
+    // Generate table header for time range
+    renderChartHeadRows() {
         let rows = [];
-
+        let timeRange = this.state.timeRange;
         // Generate table header element foreach date
-        timeRangeArray.forEach(function (date, index) {
+        timeRange.forEach(function (date, index) {
             rows.push(React.createElement(
                 'th',
                 { key: index },
@@ -25304,10 +25313,6 @@ let GanttChart = React.createClass({
     },
     // Create table structure
     renderChartTable() {
-        console.log();
-        let tableStyle = {
-            width: "max"
-        };
         return React.createElement(
             'table',
             { className: 'table table-bordered table-hover table-striped' },
