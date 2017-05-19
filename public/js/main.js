@@ -25236,19 +25236,31 @@ module.exports = require('./lib/React');
 let React = require('react');
 let Moment = require('moment');
 
-date = Moment();
-
+// Dummy task data
 let taskList = [{
     title: "Task One",
-    startDate: date.unix(),
-    endDate: date.add(5, 'days').unix()
+    startDate: Moment().add(1, 'd').unix(),
+    endDate: Moment().add(5, 'days').unix()
 }, {
     title: "Task two",
-    startDate: date.add(3, 'days').unix(),
-    endDate: date.add(10, 'days').unix()
+    startDate: Moment().add(3, 'days').unix(),
+    endDate: Moment().add(4, 'days').unix()
+}, {
+    title: "Task three",
+    startDate: Moment().unix(),
+    endDate: Moment().add(2, 'days').unix()
+}, {
+    title: "Task four",
+    startDate: Moment().add(6, 'days').unix(),
+    endDate: Moment().add(7, 'days').unix()
+}, {
+    title: "Task five",
+    startDate: Moment().add(2, 'days').unix(),
+    endDate: Moment().add(4, 'days').unix()
 }];
 
-let GanttChart = React.createClass({
+let GanttChart;
+GanttChart = React.createClass({
     displayName: 'GanttChart',
 
     getInitialState() {
@@ -25268,12 +25280,15 @@ let GanttChart = React.createClass({
             startDates.push(task.startDate);
             endDates.push(task.endDate);
         }
+        // Filter arrays to have unique values
         let uniqueStartDates = [...new Set(startDates)];
         let uniqueEndDates = [...new Set(endDates)];
 
+        // Get first date and last one for time range
         let rowsStartDateUnix = Math.min.apply(Math, uniqueStartDates);
-        let rowsEndDateUnix = Math.min.apply(Math, uniqueEndDates);
+        let rowsEndDateUnix = Math.max.apply(Math, uniqueEndDates);
 
+        // Set time range array to state
         this.setState({ timeRange: this.generateTimeRange(Moment.unix(rowsStartDateUnix), Moment.unix(rowsEndDateUnix)) });
     },
     onSearchChange(e) {
@@ -25283,10 +25298,20 @@ let GanttChart = React.createClass({
         this.setState({ newTaskInput: e.target.value });
     },
     // Button new task
-    onClickNewTask() {},
+    onClickNewTask() {
+        let tasks = this.state.taskList;
+
+        tasks.taskList.push({
+            title: "Task" + Math.random().toString(12).substring(7),
+            startDate: Moment().add(Math.floor(Math.random() * 3) + 1, 'days').unix(),
+            endDate: Moment().add(Math.floor(Math.random() * 6) + 3, 'days').unix()
+        });
+
+        this.setState({ taskList: tasks });
+    },
     // Select display type, chart or list
     onSelectDisplayType() {},
-    // Recursive function to generate time range between two Moment objects
+    // Recursive function to generate time range between two Moment objects, returns array of timestamps
     generateTimeRange(momentStartDate, momentEndDate, result = []) {
         if (momentStartDate.isBefore(momentEndDate)) {
             result.push(momentStartDate.unix());
@@ -25297,22 +25322,67 @@ let GanttChart = React.createClass({
         }
     },
     // Generate table header for time range
-    renderChartHeadRows() {
+    renderChartHeaderColumns() {
+        let tableThStyle = {
+            width: "1%",
+            whiteSpace: "nowrap"
+        };
         let rows = [];
         let timeRange = this.state.timeRange;
         // Generate table header element foreach date
         timeRange.forEach(function (date, index) {
             rows.push(React.createElement(
                 'th',
-                { key: index },
+                { style: tableThStyle, key: index },
                 Moment.unix(date).format('DD MMM YYYY')
             ));
         });
 
         return rows;
     },
+    // Generate task rows with time range
+    renderTaskRows() {
+        let taskDateColumnStyle = {
+            backgroundColor: "#265A88",
+            borderRight: "none",
+            borderLeft: "none",
+            borderRadius: "2px",
+            backgroundClip: "padding-box"
+        };
+        let taskRows = [];
+        let timeRange = this.state.timeRange;
+        let tasksObject = this.state.taskList;
+        // Generate row foreach task
+        tasksObject.taskList.forEach(function (task, index) {
+            let taskDates = [];
+            timeRange.forEach(function (date, index) {
+                if (Moment.unix(date) >= Moment.unix(task.startDate) && Moment.unix(date) <= Moment.unix(task.endDate)) {
+                    taskDates.push(React.createElement('td', { style: taskDateColumnStyle, key: index }));
+                } else {
+                    taskDates.push(React.createElement('td', { key: index }));
+                }
+            });
+
+            taskRows.push(React.createElement(
+                'tr',
+                { key: index },
+                React.createElement(
+                    'td',
+                    null,
+                    task.title
+                ),
+                taskDates
+            ));
+        });
+        console.log(taskRows);
+        return taskRows;
+    },
     // Create table structure
     renderChartTable() {
+        let tableThStyle = {
+            width: "5%",
+            whiteSpace: "nowrap"
+        };
         return React.createElement(
             'table',
             { className: 'table table-bordered table-hover table-striped' },
@@ -25324,51 +25394,16 @@ let GanttChart = React.createClass({
                     null,
                     React.createElement(
                         'th',
-                        null,
+                        { style: tableThStyle },
                         'Tasks'
                     ),
-                    this.renderChartHeadRows(taskList)
+                    this.renderChartHeaderColumns()
                 )
             ),
             React.createElement(
                 'tbody',
                 null,
-                React.createElement(
-                    'tr',
-                    { key: '1' },
-                    React.createElement(
-                        'td',
-                        null,
-                        'Task One'
-                    )
-                ),
-                React.createElement(
-                    'tr',
-                    { key: '2' },
-                    React.createElement(
-                        'td',
-                        null,
-                        'Task Two'
-                    )
-                ),
-                React.createElement(
-                    'tr',
-                    { key: '3' },
-                    React.createElement(
-                        'td',
-                        null,
-                        'Task Three'
-                    )
-                ),
-                React.createElement(
-                    'tr',
-                    { key: '4' },
-                    React.createElement(
-                        'td',
-                        null,
-                        'Task Four'
-                    )
-                )
+                this.renderTaskRows()
             )
         );
     },
