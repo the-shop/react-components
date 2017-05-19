@@ -1,44 +1,53 @@
 let React = require('react');
 let Moment = require('moment');
 
+let generateId = function () {
+    return Math.random().toString(36).substring(11)
+};
 // Dummy task data
 let taskList = [
     {
+        id: generateId(),
         title: "Task One",
         startDate: Moment().add(1, 'd').unix(),
         endDate: Moment().add(5, 'days').unix()
     },
     {
+        id: generateId(),
         title: "Task two",
         startDate: Moment().add(3, 'days').unix(),
         endDate: Moment().add(4, 'days').unix()
     },
     {
+        id: generateId(),
         title: "Task three",
         startDate: Moment().unix(),
         endDate: Moment().add(2, 'days').unix()
     },
     {
+        id: generateId(),
         title: "Task four",
         startDate: Moment().add(6, 'days').unix(),
         endDate: Moment().add(7, 'days').unix()
     },
     {
+        id: generateId(),
         title: "Task five",
         startDate: Moment().add(2, 'days').unix(),
         endDate: Moment().add(4, 'days').unix()
     }
 ];
 
-let GanttChart;
-GanttChart = React.createClass({
+let GanttChart = React.createClass({
     getInitialState() {
         return {
             taskList: {taskList},
             timeRange: [],
             searchText: "",
             searchSelect: "",
-            newTaskInput: ""
+            newTaskInput: "",
+            popup: false,
+            popupTask: null
         };
     },
     componentWillMount() {
@@ -69,10 +78,10 @@ GanttChart = React.createClass({
     // Button new task
     onClickNewTask() {
         let tasks = this.state.taskList;
-
         tasks.taskList.push(
             {
-                title: "Task" + Math.random().toString(12).substring(7),
+                id: generateId(),
+                title: "Task " + Math.random().toString(12).substring(7),
                 startDate: Moment().add(Math.floor(Math.random() * 3) + 1, 'days').unix(),
                 endDate: Moment().add(Math.floor(Math.random() * 6) + 3, 'days').unix()
             }
@@ -83,7 +92,7 @@ GanttChart = React.createClass({
     // Select display type, chart or list
     onSelectDisplayType() {
     },
-    // Recursive function to generate time range between two Moment objects, returns array of timestamps
+    // Helper function to generate time range between two Moment objects, returns array of timestamps
     generateTimeRange(momentStartDate, momentEndDate, result = []) {
         if (momentStartDate.isBefore(momentEndDate)) {
             result.push(momentStartDate.unix());
@@ -92,6 +101,18 @@ GanttChart = React.createClass({
         } else {
             return result;
         }
+    },
+    // Render popup with task details
+    renderTaskPopup(rowId) {
+        tasks = this.state.taskList
+        this.setState({popupTask: tasks.taskList[rowId]})
+        this.setState({popup: true})
+
+        //
+    },
+    closeTaskPopup() {
+        this.setState({popup: false})
+        this.setState({popupTask: null})
     },
     // Generate table header for time range
     renderChartHeaderColumns() {
@@ -115,7 +136,7 @@ GanttChart = React.createClass({
     // Generate task rows with time range
     renderTaskRows() {
         let taskDateColumnStyle = {
-          backgroundColor: "#265A88",
+            backgroundColor: "#265A88",
             borderRight: "none",
             borderLeft: "none",
             borderRadius: "2px",
@@ -143,14 +164,15 @@ GanttChart = React.createClass({
                 }
             });
 
+            //TODO: figure out how to bind row key (index number) to renderTaskPopup function
             taskRows.push(
-                <tr key={index}>
+                <tr key={index} onMouseOver={this.renderTaskPopup} onMouseLeave={this.closeTaskPopup}>
                     <td>{task.title}</td>
                     {taskDates}
                 </tr>
             );
         });
-        console.log(taskRows);
+
         return taskRows;
     },
     // Create table structure
@@ -194,6 +216,20 @@ GanttChart = React.createClass({
             padding: 0,
             marginTop: "30px"
         };
+        let popupDivStyle = {
+            MozBoxShadow: "0 0 30px 5px #999",
+            WebkitBoxShadow: "0 0 30px 5px #999",
+            position: "absolute",
+            backgroundColor: "#265A88",
+            color: "#ffffff",
+            padding: 30,
+            borderRadius: 20
+        };
+
+        if (this.state.popup === false) {
+            popupDivStyle.display = "none"
+        }
+
         return (
             <div style={containerStyle} className="container">
                 <div style={topRowStyle} className="row">
@@ -241,6 +277,17 @@ GanttChart = React.createClass({
                     <div style={tableDivStyle} className="col-sm-12">
                         {this.renderChartTable()}
                     </div>
+                </div>
+                <div className="col-sm-3" style={popupDivStyle}>
+                    <ul>
+                        <li>Task name: {this.state.popupTask !== null ? this.state.popupTask.title : ""}</li>
+                        <li>Start
+                            date: {this.state.popupTask !== null
+                                ? Moment.unix(this.state.popupTask.startDate).format('DD MMM YYYY') : ""}</li>
+                        <li>End
+                            date: {this.state.popupTask !== null
+                                ? Moment.unix(this.state.popupTask.endDate).format('DD MMM YYYY') : ""}</li>
+                    </ul>
                 </div>
             </div>
         );
