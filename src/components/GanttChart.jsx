@@ -104,11 +104,9 @@ let GanttChart = React.createClass({
     },
     // Render popup with task details
     renderTaskPopup(rowId) {
-        tasks = this.state.taskList
+        let tasks = this.state.taskList
         this.setState({popupTask: tasks.taskList[rowId]})
         this.setState({popup: true})
-
-        //
     },
     closeTaskPopup() {
         this.setState({popup: false})
@@ -146,7 +144,7 @@ let GanttChart = React.createClass({
         let timeRange = this.state.timeRange;
         let tasksObject = this.state.taskList;
         // Generate row foreach task
-        tasksObject.taskList.forEach(function (task, index) {
+        const tmpRender = function (task, index) {
             let taskDates = [];
             timeRange.forEach(function (date, index) {
                 if (Moment.unix(date) >= Moment.unix(task.startDate)
@@ -164,14 +162,15 @@ let GanttChart = React.createClass({
                 }
             });
 
-            //TODO: figure out how to bind row key (index number) to renderTaskPopup function
             taskRows.push(
-                <tr key={index} onMouseOver={this.renderTaskPopup} onMouseLeave={this.closeTaskPopup}>
+                <tr key={index} onMouseOver={this.renderTaskPopup.bind(this, index)} onMouseLeave={this.closeTaskPopup}>
                     <td>{task.title}</td>
                     {taskDates}
                 </tr>
             );
-        });
+        };
+
+        tasksObject.taskList.forEach(tmpRender.bind(this));
 
         return taskRows;
     },
