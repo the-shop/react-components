@@ -25235,33 +25235,34 @@ module.exports = require('./lib/React');
 },{"./lib/React":159}],183:[function(require,module,exports){
 let React = require('react');
 let Moment = require('moment');
+let TaskPopup = require('./TaskPopup.jsx');
 
 let generateId = function () {
     return Math.random().toString(36).substring(11);
 };
 // Dummy task data
 let taskList = [{
-    id: generateId(),
+    _id: generateId(),
     title: "Task One",
     startDate: Moment().add(1, 'd').unix(),
     endDate: Moment().add(5, 'days').unix()
 }, {
-    id: generateId(),
+    _id: generateId(),
     title: "Task two",
     startDate: Moment().add(3, 'days').unix(),
     endDate: Moment().add(4, 'days').unix()
 }, {
-    id: generateId(),
+    _id: generateId(),
     title: "Task three",
     startDate: Moment().unix(),
     endDate: Moment().add(2, 'days').unix()
 }, {
-    id: generateId(),
+    _id: generateId(),
     title: "Task four",
     startDate: Moment().add(6, 'days').unix(),
     endDate: Moment().add(7, 'days').unix()
 }, {
-    id: generateId(),
+    _id: generateId(),
     title: "Task five",
     startDate: Moment().add(2, 'days').unix(),
     endDate: Moment().add(4, 'days').unix()
@@ -25277,7 +25278,7 @@ let GanttChart = React.createClass({
             searchText: "",
             searchSelect: "",
             newTaskInput: "",
-            popup: false,
+            popupShow: false,
             popupTask: null
         };
     },
@@ -25310,7 +25311,7 @@ let GanttChart = React.createClass({
     onClickNewTask() {
         let tasks = this.state.taskList;
         tasks.taskList.push({
-            id: generateId(),
+            _id: generateId(),
             title: "Task " + Math.random().toString(12).substring(7),
             startDate: Moment().add(Math.floor(Math.random() * 3) + 1, 'days').unix(),
             endDate: Moment().add(Math.floor(Math.random() * 6) + 3, 'days').unix()
@@ -25334,11 +25335,19 @@ let GanttChart = React.createClass({
     renderTaskPopup(rowId) {
         let tasks = this.state.taskList;
         this.setState({ popupTask: tasks.taskList[rowId] });
-        this.setState({ popup: true });
+        this.setState({ popupShow: true });
     },
     closeTaskPopup() {
-        this.setState({ popup: false });
+        this.setState({ popupShow: false });
         this.setState({ popupTask: null });
+    },
+    saveTaskData(taskObject) {
+        let taskList = this.state.taskList.taskList;
+        let indexOfTaskToUpdate = taskList.findIndex(task => task._id === taskObject._id);
+
+        taskList[indexOfTaskToUpdate] = taskObject;
+        this.setState({ taskList: { taskList } });
+        console.log(this.state.taskList);
     },
     // Generate table header for time range
     renderChartHeaderColumns() {
@@ -25368,6 +25377,9 @@ let GanttChart = React.createClass({
             borderRadius: "2px",
             backgroundClip: "padding-box"
         };
+        let taskRowStyle = {
+            cursor: "pointer"
+        };
         let taskRows = [];
         let timeRange = this.state.timeRange;
         let tasksObject = this.state.taskList;
@@ -25384,7 +25396,7 @@ let GanttChart = React.createClass({
 
             taskRows.push(React.createElement(
                 'tr',
-                { key: index, onMouseOver: this.renderTaskPopup.bind(this, index), onMouseLeave: this.closeTaskPopup },
+                { style: taskRowStyle, key: index, onClick: this.renderTaskPopup.bind(this, index) },
                 React.createElement(
                     'td',
                     null,
@@ -25447,20 +25459,6 @@ let GanttChart = React.createClass({
             padding: 0,
             marginTop: "30px"
         };
-        let popupDivStyle = {
-            MozBoxShadow: "0 0 30px 5px #999",
-            WebkitBoxShadow: "0 0 30px 5px #999",
-            position: "absolute",
-            backgroundColor: "#265A88",
-            color: "#ffffff",
-            padding: 30,
-            borderRadius: 20
-        };
-
-        if (this.state.popup === false) {
-            popupDivStyle.display = "none";
-        }
-
         return React.createElement(
             'div',
             { style: containerStyle, className: 'container' },
@@ -25556,43 +25554,332 @@ let GanttChart = React.createClass({
                     this.renderChartTable()
                 )
             ),
+            React.createElement(TaskPopup, { popupTask: this.state.popupTask,
+                popupShow: this.state.popupShow,
+                onClickClose: this.closeTaskPopup.bind(this),
+                taskFieldsRules: this.props.taskFieldsRules,
+                saveTaskCb: this.saveTaskData })
+        );
+    }
+});
+
+GanttChart.defaultProps = {
+    taskFieldsRules: {
+        taskOptionalFieldsRules: {
+            title: {
+                inputType: "text",
+                name: "title",
+                label: "Task name"
+            },
+            startDate: {
+                inputType: "date",
+                name: "start_date",
+                label: "Start due date"
+
+            },
+            endDate: {
+                inputType: "date",
+                name: "due_date",
+                label: "End due date"
+            },
+            button1: {
+                inputType: "button",
+                name: "send_email",
+                label: "Send email",
+                onClick: (taskData, event) => {
+                    //... do something
+                }
+            }
+        },
+        taskMandatoryFields: ['_id', 'title', 'startDate', 'endDate', 'button1'],
+        taskEditableFields: ['title', 'startDate', 'endDate', 'button1']
+    }
+};
+
+module.exports = GanttChart;
+
+},{"./TaskPopup.jsx":184,"moment":24,"react":182}],184:[function(require,module,exports){
+let React = require('react');
+let TaskPopupViewData = require('./TaskPopupViewData.jsx');
+let TaskPopupEditData = require('./TaskPopupEditData.jsx');
+
+let TaskPopup = React.createClass({
+    displayName: 'TaskPopup',
+
+    getInitialState() {
+        return {
+            editMode: false
+        };
+    },
+    componentWillReceiveProps(nextProps) {
+        if (nextProps.popupTask) {
+            this.setState({ taskState: nextProps.popupTask });
+        }
+    },
+    onClickEdit() {
+        this.setState({ editMode: true });
+    },
+    onClickClose() {
+        this.setState({ editMode: false });
+
+        return this.props.onClickClose();
+    },
+    onClickCancel() {
+        this.setState({ editMode: false });
+    },
+    onClickSave() {
+        this.props.saveTaskCb(this.state.taskState);
+        this.setState({ editMode: false });
+    },
+    updateTaskState(key, value) {
+        let { taskState } = this.state;
+        taskState[key] = value;
+        this.setState({ taskState });
+    },
+    renderDataComponent() {
+        if (!this.state.editMode) {
+            return React.createElement(TaskPopupViewData, { taskFieldsRules: this.props.taskFieldsRules,
+                popupTask: this.props.popupTask });
+        } else {
+            return React.createElement(TaskPopupEditData, { taskFieldsRules: this.props.taskFieldsRules,
+                popupTask: this.state.taskState,
+                updateTaskStateCb: this.updateTaskState });
+        }
+    },
+    renderButtons() {
+        let buttonEditStyle = {
+            color: "#265A88",
+            fontWeight: 600
+        };
+        let buttonSaveStyle = {
+            fontWeight: 600
+        };
+        let buttonCancelStyle = {
+            fontWeight: 600
+        };
+
+        if (!this.state.editMode) {
+            return React.createElement(
+                'div',
+                { className: 'col-sm-12' },
+                React.createElement(
+                    'button',
+                    { style: buttonEditStyle,
+                        className: 'btn btn-default pull-right',
+                        onClick: this.onClickEdit },
+                    'Edit'
+                )
+            );
+        } else {
+            return React.createElement(
+                'div',
+                { className: 'col-sm-12' },
+                React.createElement(
+                    'button',
+                    { style: buttonSaveStyle,
+                        className: 'btn btn-default pull-right',
+                        onClick: this.onClickSave },
+                    'Save'
+                ),
+                React.createElement(
+                    'button',
+                    { style: buttonCancelStyle,
+                        className: 'btn btn-danger pull-right',
+                        onClick: this.onClickCancel },
+                    'Cancel'
+                )
+            );
+        }
+    },
+    render() {
+        let popupCloseStyle = {
+            cursor: "pointer",
+            fontWeight: 600
+        };
+
+        let popupDivStyle = {
+            MozBoxShadow: "0 0 30px 5px #999",
+            WebkitBoxShadow: "0 0 30px 5px #999",
+            position: "absolute",
+            backgroundColor: "#265A88",
+            color: "#ffffff",
+            padding: 30
+        };
+
+        if (this.props.popupShow === false) {
+            popupDivStyle.display = "none";
+        }
+
+        return React.createElement(
+            'div',
+            { className: 'col-sm-3', style: popupDivStyle },
             React.createElement(
                 'div',
-                { className: 'col-sm-3', style: popupDivStyle },
+                { className: 'row' },
                 React.createElement(
-                    'ul',
-                    null,
+                    'div',
+                    { className: 'col-sm-10' },
+                    this.renderDataComponent()
+                ),
+                React.createElement(
+                    'div',
+                    { className: 'col-sm-2' },
                     React.createElement(
-                        'li',
-                        null,
-                        'Task name: ',
-                        this.state.popupTask !== null ? this.state.popupTask.title : ""
-                    ),
-                    React.createElement(
-                        'li',
-                        null,
-                        'Start date: ',
-                        this.state.popupTask !== null ? Moment.unix(this.state.popupTask.startDate).format('DD MMM YYYY') : ""
-                    ),
-                    React.createElement(
-                        'li',
-                        null,
-                        'End date: ',
-                        this.state.popupTask !== null ? Moment.unix(this.state.popupTask.endDate).format('DD MMM YYYY') : ""
+                        'span',
+                        { style: popupCloseStyle,
+                            className: 'pull-right',
+                            onClick: this.onClickClose },
+                        'X'
                     )
                 )
+            ),
+            React.createElement(
+                'div',
+                { className: 'row' },
+                this.renderButtons()
             )
         );
     }
 });
 
-module.exports = GanttChart;
+module.exports = TaskPopup;
 
-},{"moment":24,"react":182}],184:[function(require,module,exports){
+},{"./TaskPopupEditData.jsx":185,"./TaskPopupViewData.jsx":186,"react":182}],185:[function(require,module,exports){
+let React = require('react');
+
+let TaskPopupEditData = React.createClass({
+    displayName: 'TaskPopupEditData',
+
+    onFieldChange(field, e) {
+        this.props.updateTaskStateCb(field, e.target.value);
+    },
+    createFormFields() {
+        let editFieldDivStyle = {
+            marginBottom: "30px"
+        };
+        let fields = [];
+        let fieldRules = this.props.taskFieldsRules.taskOptionalFieldsRules;
+        let mandatoryFields = this.props.taskFieldsRules.taskMandatoryFields;
+        let editableFields = this.props.taskFieldsRules.taskEditableFields;
+
+        // Intersect mandatory fields array and editable fields
+        const fieldsToRenderArray = editableFields.filter(function (n) {
+            return mandatoryFields.indexOf(n) !== -1;
+        });
+
+        // Render task input fields and custom buttons
+        const renderFields = function (field, index) {
+            if (fieldRules[field].inputType !== 'button') {
+                fields.push(React.createElement(
+                    'div',
+                    { key: index, style: editFieldDivStyle },
+                    React.createElement(
+                        'label',
+                        { key: index, htmlFor: index },
+                        fieldRules[field].label
+                    ),
+                    React.createElement('input', { className: 'form-control',
+                        key: field + index,
+                        type: fieldRules[field].inputType,
+                        name: fieldRules[field].name,
+                        onChange: this.onFieldChange.bind(this, field),
+                        value: this.props.popupTask[field]
+                    })
+                ));
+            } else {
+                fields.push(React.createElement(
+                    'div',
+                    { key: index, style: editFieldDivStyle },
+                    React.createElement(
+                        'buton',
+                        { className: 'btn btn-default',
+                            key: field + index,
+                            type: fieldRules[field].inputType,
+                            name: fieldRules[field].name,
+                            onClick: fieldRules[field].onClick(this.props.popupTask) },
+                        fieldRules[field].label
+                    )
+                ));
+            }
+        };
+
+        fieldsToRenderArray.forEach(renderFields.bind(this));
+
+        return fields;
+    },
+    render() {
+        return React.createElement(
+            'div',
+            null,
+            this.createFormFields()
+        );
+    }
+});
+
+module.exports = TaskPopupEditData;
+
+},{"react":182}],186:[function(require,module,exports){
+let React = require('react');
+let Moment = require('moment');
+
+let TaskPopupViewData = React.createClass({
+    displayName: 'TaskPopupViewData',
+
+    createDataList() {
+        let spanStyle = {
+            fontWeight: 600
+        };
+        let fieldRules = this.props.taskFieldsRules.taskOptionalFieldsRules;
+        dataList = [];
+        let task = this.props.popupTask;
+
+        // Generate list items for each task field except _id
+        for (let prop in task) {
+            if (task.hasOwnProperty(prop) && prop !== '_id' && prop !== 'startDate' && prop !== "endDate") {
+                dataList.push(React.createElement(
+                    'li',
+                    { key: prop },
+                    React.createElement(
+                        'span',
+                        { style: spanStyle },
+                        fieldRules[prop].label
+                    ),
+                    ': ',
+                    task[prop]
+                ));
+            } else if (task.hasOwnProperty(prop) && prop !== '_id' && (prop === 'startDate' || prop === "endDate")) {
+                dataList.push(React.createElement(
+                    'li',
+                    { key: prop },
+                    React.createElement(
+                        'span',
+                        { style: spanStyle },
+                        fieldRules[prop].label
+                    ),
+                    ': ',
+                    Moment.unix(task[prop]).format('DD MMM YYYY')
+                ));
+            }
+        }
+
+        return dataList;
+    },
+    render() {
+        return React.createElement(
+            'ul',
+            null,
+            this.createDataList()
+        );
+    }
+});
+
+module.exports = TaskPopupViewData;
+
+},{"moment":24,"react":182}],187:[function(require,module,exports){
 let React = require('react');
 let ReactDOM = require('react-dom');
 let GanttChart = require('./components/GanttChart.jsx');
 
 ReactDOM.render(React.createElement(GanttChart, null), document.getElementById("container"));
 
-},{"./components/GanttChart.jsx":183,"react":182,"react-dom":31}]},{},[184]);
+},{"./components/GanttChart.jsx":183,"react":182,"react-dom":31}]},{},[187]);
