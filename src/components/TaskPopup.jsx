@@ -91,7 +91,7 @@ let TaskPopup = React.createClass({
             position: "absolute",
             backgroundColor: "#265A88",
             color: "#ffffff",
-            padding: 30,
+            padding: 30
         };
 
         if (this.props.popupShow === false) {
