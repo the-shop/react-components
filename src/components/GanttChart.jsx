@@ -122,12 +122,16 @@ let GanttChart = React.createClass({
             this.setState({popupShow: false});
             this.setState({popupTask: null});
         },
-        // Update task data to state
+        // Update task data to state and pass data to callback if callback exists
         saveTaskData(taskObject) {
+            // Update gantt chart state
             let taskList = this.state.taskList;
-
             taskList[taskObject._id] = taskObject;
             this.setState({taskList});
+            // Pass data to callback
+            if (this.props.onSaveTaskCb) {
+                this.props.onSaveTaskCb(taskObject);
+            }
         },
         // Generate table header for time range
         renderChartHeaderColumns() {
@@ -300,7 +304,7 @@ let GanttChart = React.createClass({
             return taskRows;
         }
         ,
-// Create table structure
+        // Create table structure
         renderChartTable()
         {
             let tableThStyle = {
@@ -399,7 +403,7 @@ let GanttChart = React.createClass({
                                popupShow={this.state.popupShow}
                                onClickClose={this.closeTaskPopup}
                                taskFieldsRules={this.props.taskFieldsRules}
-                               saveTaskCb={this.saveTaskData}/>
+                               saveTaskStateCb={this.saveTaskData}/>
                 </div>
             );
         }
@@ -437,6 +441,11 @@ GanttChart.defaultProps = {
         taskMandatoryFields: ['_id', 'title', 'startDate', 'endDate', 'button1'],
         taskEditableFields: ['title', 'startDate', 'endDate', 'button1']
     }
+};
+
+// Callback prop for task update on task edit/save
+GanttChart.propTypes = {
+  onSaveTaskCb: React.PropTypes.func
 };
 
 module.exports = GanttChart;

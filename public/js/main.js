@@ -25356,12 +25356,16 @@ let GanttChart = React.createClass({
         this.setState({ popupShow: false });
         this.setState({ popupTask: null });
     },
-    // Update task data to state
+    // Update task data to state and pass data to callback if callback exists
     saveTaskData(taskObject) {
+        // Update gantt chart state
         let taskList = this.state.taskList;
-
         taskList[taskObject._id] = taskObject;
         this.setState({ taskList });
+        // Pass data to callback
+        if (this.props.onSaveTaskCb) {
+            this.props.onSaveTaskCb(taskObject);
+        }
     },
     // Generate table header for time range
     renderChartHeaderColumns() {
@@ -25680,7 +25684,7 @@ let GanttChart = React.createClass({
                 popupShow: this.state.popupShow,
                 onClickClose: this.closeTaskPopup,
                 taskFieldsRules: this.props.taskFieldsRules,
-                saveTaskCb: this.saveTaskData })
+                saveTaskStateCb: this.saveTaskData })
         );
     }
 });
@@ -25718,6 +25722,11 @@ GanttChart.defaultProps = {
     }
 };
 
+// Callback prop for task update on task edit/save
+GanttChart.propTypes = {
+    onSaveTaskCb: React.PropTypes.func
+};
+
 module.exports = GanttChart;
 
 },{"./TaskPopup.jsx":184,"moment":24,"react":182}],184:[function(require,module,exports){
@@ -25750,7 +25759,7 @@ let TaskPopup = React.createClass({
         this.setState({ editMode: false });
     },
     onClickSave() {
-        this.props.saveTaskCb(this.state.taskState);
+        this.props.saveTaskStateCb(this.state.taskState);
         this.setState({ editMode: false });
     },
     updateTaskState(key, value) {
