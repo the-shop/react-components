@@ -25,7 +25,7 @@ let TaskPopup = React.createClass({
         this.setState({editMode: false})
     },
     onClickSave() {
-        this.props.saveTaskCb(this.state.taskState);
+        this.props.saveTaskStateCb(this.state.taskState);
         this.setState({editMode: false});
     },
     updateTaskState(key, value) {
