@@ -1,6 +1,12 @@
 let React = require('react');
 let Moment = require('moment');
 let TaskPopup = require('./TaskPopup.jsx');
+// Table components
+let TableRow = require('./table-components/TableRow.jsx');
+let TaskTitleTd = require('./table-components/TaskTitleTd.jsx');
+let TaskDraggableTd = require('./table-components/TaskDraggableTd.jsx');
+let TaskNotDraggableTd = require('./table-components/TaskNotDraggableTd.jsx');
+let TaskPlainTd = require('./table-components/TaskPlainTd.jsx');
 
 let generateId = function () {
     return Math.random().toString(36).substring(11)
@@ -107,7 +113,7 @@ let GanttChart = React.createClass({
                 momentStartDate.add(1, 'day');
                 return this.generateTimeRange(momentStartDate, momentEndDate, result);
             } else {
-                result.push(momentStartDate.unix());
+                result.push(momentEndDate.unix());
                 return result;
             }
         },
@@ -133,35 +139,18 @@ let GanttChart = React.createClass({
                 this.props.onSaveTaskCb(taskObject);
             }
         },
-        // Generate table header for time range
-        renderChartHeaderColumns() {
-            let tableThStyle = {
-                width: "1%",
-                whiteSpace: "nowrap"
-            };
-            let rows = [];
-            let timeRange = this.state.timeRange;
-            // Generate table header element foreach date
-            timeRange.forEach(function (date, index) {
-                rows.push(
-                    <th style={tableThStyle} key={index}>
-                        {Moment.unix(date).format('DD MMM YYYY')}
-                    </th>
-                );
-            });
-
-            return rows;
-        },
-        /*---------------------- Functions for task dragging --------------------*/
+        /*---------------------- Functions for task dragging - drag/drop events --------------------*/
         columnDragStart(dateValueId, e) {
             const tableCellTaskId = e.target.id.split('-')[1];
             const columnDueDate = parseInt(document.getElementById(dateValueId).value);
             let task = this.state.taskList[tableCellTaskId];
 
+            // Set to state that task is dragged from start date
             if (columnDueDate === task.startDate) {
                 this.setState({draggableTaskDate: true});
             }
 
+            // Set to state that task is dragged from end date
             if (columnDueDate === task.endDate) {
                 this.setState({draggableTaskDate: false});
             }
@@ -175,7 +164,6 @@ let GanttChart = React.createClass({
                 e.target.classList.add("dragged");
                 e.target.style.backgroundColor = "#265A88";
                 e.target.style.opacity = .5;
-                this.setState({cellToDropTaskId: tableCellTaskId});
             }
         },
         // On drag leave event
@@ -187,6 +175,9 @@ let GanttChart = React.createClass({
                 e.target.style.removeProperty("opacity");
                 if (e.target.className === "draggable") {
                     e.target.style.backgroundColor = "#265A88";
+                }
+                if (e.target.className === "notDraggable") {
+                    e.target.style.backgroundColor = "#0077b3";
                 }
             }
 
@@ -200,102 +191,119 @@ let GanttChart = React.createClass({
         // When due date dropped update task start or end due date
         columnDrop(dateValueId, e) {
             const tableCellTaskId = e.target.id.split('-')[1];
-            const columnDueDate = document.getElementById(dateValueId);
+            const columnDueDate = parseInt(document.getElementById(dateValueId).value);
             let task = this.state.taskList[tableCellTaskId];
-            if (this.state.cellToDropTaskId === tableCellTaskId) {
+            if (this.state.draggableTaskId === tableCellTaskId) {
                 e.target.style.removeProperty("opacity");
-                if (columnDueDate.value > task.endDate) {
-                    task.endDate = columnDueDate.value;
+                // Set task start date or end date based on which column is drag date dropped
+                if (columnDueDate > task.endDate) {
+                    task.endDate = columnDueDate;
                 }
-                if (columnDueDate.value < task.startDate) {
-                    task.startDate = columnDueDate.value;
+                if (columnDueDate < task.startDate) {
+                    task.startDate = columnDueDate;
                 }
-                if (columnDueDate.value > task.startDate
-                    && columnDueDate.value < task.endDate
+                if (columnDueDate > task.startDate
+                    && columnDueDate < task.endDate
                     && this.state.draggableTaskDate
                 ) {
-                    task.startDate = columnDueDate.value;
-                } else if (columnDueDate.value > task.startDate
-                    && columnDueDate.value < task.endDate
+                    task.startDate = columnDueDate;
+                } else if (columnDueDate > task.startDate
+                    && columnDueDate < task.endDate
                     && !this.state.draggableTaskDate
                 ) {
-                    task.endDate = columnDueDate.value;
+                    task.endDate = columnDueDate;
                 }
             }
+
             this.saveTaskData(task);
             this.state.draggableTaskDate = null;
         },
-
-        // Generate task rows with time range
-        renderTaskRows()
-        {
-            let draggableColumnStyle = {
-                backgroundColor: "#265A88",
-                borderRight: "none",
-                borderLeft: "none",
-                borderRadius: "2px",
-                cursor: "pointer",
-                height: "100%",
-                backgroundClip: "padding-box",
+        // Generate table header for time range
+        renderChartHeaderColumns() {
+            let tableThStyle = {
+                width: "5%",
+                whiteSpace: "nowrap"
             };
+            let rows = [<th style={tableThStyle} key="tasksHeaderCell">Tasks</th>];
+            let timeRange = this.state.timeRange;
+            // Generate table header element foreach date
+            timeRange.forEach(function (date, index) {
+                rows.push(
+                    <th style={tableThStyle} key={index}>
+                        {Moment.unix(date).format('DD MMM YYYY')}
+                    </th>
+                );
+            });
 
+            return rows;
+        },
+        // Generate task rows with time range
+        renderTaskRows() {
             let taskRows = [];
             let timeRange = this.state.timeRange;
             let taskList = Object.values(this.state.taskList);
             // Sort task list by start due date
             /*taskList = taskList.sort(function (a, b) {
-                return a.startDate - b.startDate;
-            });*/
+             return a.startDate - b.startDate;
+             });*/
             // Generate row foreach task
             const tmpRender = function (task) {
-                let taskDates = [];
+                let taskRow = [<TaskTitleTd key={task.title} title={task.title}/>];
                 timeRange.forEach(function (date, tdIndex) {
                     const tdId = tdIndex + '-' + task._id;
                     const dateValueId = task._id + '-' + tdIndex;
-                    // Allow only start and end due date to be draggable on chart
-                    let draggable = false;
-                    if (date === task.startDate || date === task.endDate) {
-                        draggable = true;
-                    }
-                    if (Moment.unix(date) >= Moment.unix(task.startDate)
-                        && Moment.unix(date) <= Moment.unix(task.endDate)
-                    ) {
-                        taskDates.push(
-                            <td className="draggable"
-                                style={draggableColumnStyle}
-                                key={tdIndex}
-                                id={tdId}
-                                onClick={this.renderTaskPopup}
-                                onDragStart={draggable ? this.columnDragStart.bind(this, dateValueId) : () => {}}
-                                onDragLeave={this.columnDragLeave}
-                                onDragEnter={this.columnDragEnter}
-                                onDragOver={this.columnDragOver}
-                                onDrop={this.columnDrop.bind(this, dateValueId)}
-                            >
-                                <input id={dateValueId} type="hidden" value={date}/>
-                            </td>
+
+                    if (date > task.startDate && date < task.endDate) {
+                        taskRow.push(
+                            <TaskNotDraggableTd className="notDraggable"
+                                                key={tdIndex}
+                                                keyProp={tdIndex}
+                                                id={tdId}
+                                                inputId={dateValueId}
+                                                date={date}
+                                                onClick={this.renderTaskPopup}
+                                                onDragLeave={this.columnDragLeave}
+                                                onDragEnter={this.columnDragEnter}
+                                                onDragOver={this.columnDragOver}
+                                                onDrop={this.columnDrop.bind(this, dateValueId)}/>
                         );
-                    } else {
-                        taskDates.push(
-                            <td className="dropZoneColumn"
-                                key={tdIndex}
-                                id={tdId}
-                                onDragLeave={this.columnDragLeave}
-                                onDragEnter={this.columnDragEnter}
-                                onDragOver={this.columnDragOver}
-                                onDrop={this.columnDrop.bind(this, dateValueId)}
-                            >
-                                <input id={dateValueId} type="hidden" value={date}/>
-                            </td>
+                    }
+                    else if (date === task.startDate || date === task.endDate) {
+                        taskRow.push(
+                            <TaskDraggableTd className="draggable"
+                                             key={tdIndex}
+                                             keyProp={tdIndex}
+                                             id={tdId}
+                                             inputId={dateValueId}
+                                             date={date}
+                                             onClick={this.renderTaskPopup}
+                                             onDragStart={this.columnDragStart.bind(this, dateValueId)}
+                                             onDragLeave={this.columnDragLeave}
+                                             onDragEnter={this.columnDragEnter}
+                                             onDragOver={this.columnDragOver}
+                                             onDrop={this.columnDrop.bind(this, dateValueId)}/>
+                        );
+                    }
+                    else {
+                        taskRow.push(
+                            <TaskPlainTd className="plainTd"
+                                         key={tdIndex}
+                                         keyProp={tdIndex}
+                                         id={tdId}
+                                         inputId={dateValueId}
+                                         date={date}
+                                         onDragLeave={this.columnDragLeave}
+                                         onDragEnter={this.columnDragEnter}
+                                         onDragOver={this.columnDragOver}
+                                         onDrop={this.columnDrop.bind(this, dateValueId)}/>
                         );
                     }
                 }, this);
 
                 taskRows.push(
-                    <tr key={task._id}>
-                        <td>{task.title}</td>
-                        {taskDates}
-                    </tr>
+                    <TableRow key={task._id} keyProp={task._id}>
+                        {taskRow}
+                    </TableRow>
                 );
             };
 
@@ -307,22 +315,15 @@ let GanttChart = React.createClass({
         // Create table structure
         renderChartTable()
         {
-            let tableThStyle = {
-                width: "5%",
-                whiteSpace: "nowrap"
-            };
             let tableStyle = {
                 width: "100%"
             };
             return (
                 <table style={tableStyle} className="table table-bordered table-hover table-striped">
                     <thead>
-                    <tr>
-                        <th style={tableThStyle}>
-                            Tasks
-                        </th>
+                    <TableRow key="tasksHeader" keyProp="tasksHeader">
                         {this.renderChartHeaderColumns()}
-                    </tr>
+                    </TableRow>
                     </thead>
                     <tbody>
                     {this.renderTaskRows()}
@@ -445,7 +446,7 @@ GanttChart.defaultProps = {
 
 // Callback prop for task update on task edit/save
 GanttChart.propTypes = {
-  onSaveTaskCb: React.PropTypes.func
+    onSaveTaskCb: React.PropTypes.func
 };
 
 module.exports = GanttChart;

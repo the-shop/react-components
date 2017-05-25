@@ -118,4 +118,12 @@ let TaskPopup = React.createClass({
     }
 });
 
+TaskPopup.propTypes = {
+    popupTask: React.PropTypes.object,
+    popupShow: React.PropTypes.bool,
+    onClickClose: React.PropTypes.func,
+    taskFieldRules: React.PropTypes.object,
+    saveTaskStateCb: React.PropTypes.func
+};
+
 module.exports = TaskPopup;

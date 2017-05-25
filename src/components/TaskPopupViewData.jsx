@@ -35,4 +35,9 @@ let TaskPopupViewData = React.createClass({
     }
 });
 
+TaskPopupViewData.propTypes = {
+    taskFieldsRules: React.PropTypes.object,
+    popupTask: React.PropTypes.object
+};
+
 module.exports = TaskPopupViewData;
