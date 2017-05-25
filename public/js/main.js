@@ -25240,40 +25240,51 @@ let TaskPopup = require('./TaskPopup.jsx');
 let generateId = function () {
     return Math.random().toString(36).substring(11);
 };
+let id1 = generateId();
+let id2 = generateId();
+let id3 = generateId();
+let id4 = generateId();
+let id5 = generateId();
+
 // Dummy task data
-let taskList = [{
-    _id: generateId(),
+let taskList = {};
+taskList[id1] = {
+    _id: id1,
     title: "Task One",
     startDate: Moment().add(1, 'd').unix(),
     endDate: Moment().add(5, 'days').unix()
-}, {
-    _id: generateId(),
-    title: "Task two",
-    startDate: Moment().add(3, 'days').unix(),
+};
+taskList[id2] = {
+    _id: id2,
+    title: "Task Two",
+    startDate: Moment().add(2, 'd').unix(),
     endDate: Moment().add(4, 'days').unix()
-}, {
-    _id: generateId(),
-    title: "Task three",
-    startDate: Moment().unix(),
+};
+taskList[id3] = {
+    _id: id3,
+    title: "Task Three",
+    startDate: Moment().add(3, 'd').unix(),
+    endDate: Moment().add(6, 'days').unix()
+};
+taskList[id4] = {
+    _id: id4,
+    title: "Task Four",
+    startDate: Moment().add(1, 'd').unix(),
     endDate: Moment().add(2, 'days').unix()
-}, {
-    _id: generateId(),
-    title: "Task four",
-    startDate: Moment().add(6, 'days').unix(),
-    endDate: Moment().add(7, 'days').unix()
-}, {
-    _id: generateId(),
+};
+taskList[id5] = {
+    _id: id5,
     title: "Task five",
-    startDate: Moment().add(2, 'days').unix(),
-    endDate: Moment().add(4, 'days').unix()
-}];
+    startDate: Moment().add(4, 'd').unix(),
+    endDate: Moment().add(10, 'days').unix()
+};
 
 let GanttChart = React.createClass({
     displayName: 'GanttChart',
 
     getInitialState() {
         return {
-            taskList: { taskList },
+            taskList: taskList,
             timeRange: [],
             searchText: "",
             searchSelect: "",
@@ -25285,11 +25296,12 @@ let GanttChart = React.createClass({
     componentWillMount() {
         let startDates = [];
         let endDates = [];
-        let taskListObject = this.state.taskList;
-        for (let task of taskListObject.taskList) {
+        let taskList = Object.values(this.state.taskList);
+        for (let task of taskList) {
             startDates.push(task.startDate);
             endDates.push(task.endDate);
         }
+
         // Filter arrays to have unique values
         let uniqueStartDates = [...new Set(startDates)];
         let uniqueEndDates = [...new Set(endDates)];
@@ -25309,13 +25321,14 @@ let GanttChart = React.createClass({
     },
     // Button new task
     onClickNewTask() {
+        let taskId = generateId();
         let tasks = this.state.taskList;
-        tasks.taskList.push({
-            _id: generateId(),
+        tasks[taskId] = {
+            _id: taskId,
             title: "Task " + Math.random().toString(12).substring(7),
             startDate: Moment().add(Math.floor(Math.random() * 3) + 1, 'days').unix(),
             endDate: Moment().add(Math.floor(Math.random() * 6) + 3, 'days').unix()
-        });
+        };
 
         this.setState({ taskList: tasks });
     },
@@ -25328,26 +25341,27 @@ let GanttChart = React.createClass({
             momentStartDate.add(1, 'day');
             return this.generateTimeRange(momentStartDate, momentEndDate, result);
         } else {
+            result.push(momentStartDate.unix());
             return result;
         }
     },
     // Render popup with task details
-    renderTaskPopup(rowId) {
-        let tasks = this.state.taskList;
-        this.setState({ popupTask: tasks.taskList[rowId] });
+    renderTaskPopup(e) {
+        const tableCellTaskId = e.target.id.split('-')[1];
+        let { taskList } = this.state;
+        this.setState({ popupTask: taskList[tableCellTaskId] });
         this.setState({ popupShow: true });
     },
     closeTaskPopup() {
         this.setState({ popupShow: false });
         this.setState({ popupTask: null });
     },
+    // Update task data to state
     saveTaskData(taskObject) {
-        let taskList = this.state.taskList.taskList;
-        let indexOfTaskToUpdate = taskList.findIndex(task => task._id === taskObject._id);
+        let taskList = this.state.taskList;
 
-        taskList[indexOfTaskToUpdate] = taskObject;
-        this.setState({ taskList: { taskList } });
-        console.log(this.state.taskList);
+        taskList[taskObject._id] = taskObject;
+        this.setState({ taskList });
     },
     // Generate table header for time range
     renderChartHeaderColumns() {
@@ -25368,35 +25382,138 @@ let GanttChart = React.createClass({
 
         return rows;
     },
+    /*---------------------- Functions for task dragging --------------------*/
+    columnDragStart(dateValueId, e) {
+        const tableCellTaskId = e.target.id.split('-')[1];
+        const columnDueDate = parseInt(document.getElementById(dateValueId).value);
+        let task = this.state.taskList[tableCellTaskId];
+
+        if (columnDueDate === task.startDate) {
+            this.setState({ draggableTaskDate: true });
+        }
+
+        if (columnDueDate === task.endDate) {
+            this.setState({ draggableTaskDate: false });
+        }
+
+        this.setState({ draggableTaskId: tableCellTaskId });
+    },
+    // On drag enter event
+    columnDragEnter(e) {
+        const tableCellTaskId = e.target.id.split('-')[1];
+        if (this.state.draggableTaskId === tableCellTaskId) {
+            e.target.classList.add("dragged");
+            e.target.style.backgroundColor = "#265A88";
+            e.target.style.opacity = .5;
+            this.setState({ cellToDropTaskId: tableCellTaskId });
+        }
+    },
+    // On drag leave event
+    columnDragLeave(e) {
+        const tableCellTaskId = e.target.id.split('-')[1];
+        if (this.state.draggableTaskId === tableCellTaskId) {
+            e.target.classList.remove("dragged");
+            e.target.style.removeProperty("background-color");
+            e.target.style.removeProperty("opacity");
+            if (e.target.className === "draggable") {
+                e.target.style.backgroundColor = "#265A88";
+            }
+        }
+    },
+    // On drag over event
+    columnDragOver(e) {
+        // Needed so drop event can fire
+        e.preventDefault();
+    },
+    // On drop event
+    // When due date dropped update task start or end due date
+    columnDrop(dateValueId, e) {
+        const tableCellTaskId = e.target.id.split('-')[1];
+        const columnDueDate = document.getElementById(dateValueId);
+        let task = this.state.taskList[tableCellTaskId];
+        if (this.state.cellToDropTaskId === tableCellTaskId) {
+            e.target.style.removeProperty("opacity");
+            if (columnDueDate.value > task.endDate) {
+                task.endDate = columnDueDate.value;
+            }
+            if (columnDueDate.value < task.startDate) {
+                task.startDate = columnDueDate.value;
+            }
+            if (columnDueDate.value > task.startDate && columnDueDate.value < task.endDate && this.state.draggableTaskDate) {
+                task.startDate = columnDueDate.value;
+            } else if (columnDueDate.value > task.startDate && columnDueDate.value < task.endDate && !this.state.draggableTaskDate) {
+                task.endDate = columnDueDate.value;
+            }
+        }
+        this.saveTaskData(task);
+        this.state.draggableTaskDate = null;
+    },
+
     // Generate task rows with time range
     renderTaskRows() {
-        let taskDateColumnStyle = {
+        let draggableColumnStyle = {
             backgroundColor: "#265A88",
             borderRight: "none",
             borderLeft: "none",
             borderRadius: "2px",
+            cursor: "pointer",
+            height: "100%",
             backgroundClip: "padding-box"
         };
-        let taskRowStyle = {
-            cursor: "pointer"
-        };
+
         let taskRows = [];
         let timeRange = this.state.timeRange;
-        let tasksObject = this.state.taskList;
+        let taskList = Object.values(this.state.taskList);
+        // Sort task list by start due date
+        /*taskList = taskList.sort(function (a, b) {
+            return a.startDate - b.startDate;
+        });*/
         // Generate row foreach task
-        const tmpRender = function (task, index) {
+        const tmpRender = function (task) {
             let taskDates = [];
-            timeRange.forEach(function (date, index) {
-                if (Moment.unix(date) >= Moment.unix(task.startDate) && Moment.unix(date) <= Moment.unix(task.endDate)) {
-                    taskDates.push(React.createElement('td', { style: taskDateColumnStyle, key: index }));
-                } else {
-                    taskDates.push(React.createElement('td', { key: index }));
+            timeRange.forEach(function (date, tdIndex) {
+                const tdId = tdIndex + '-' + task._id;
+                const dateValueId = task._id + '-' + tdIndex;
+                // Allow only start and end due date to be draggable on chart
+                let draggable = false;
+                if (date === task.startDate || date === task.endDate) {
+                    draggable = true;
                 }
-            });
+                if (Moment.unix(date) >= Moment.unix(task.startDate) && Moment.unix(date) <= Moment.unix(task.endDate)) {
+                    taskDates.push(React.createElement(
+                        'td',
+                        { className: 'draggable',
+                            style: draggableColumnStyle,
+                            key: tdIndex,
+                            id: tdId,
+                            onClick: this.renderTaskPopup,
+                            onDragStart: draggable ? this.columnDragStart.bind(this, dateValueId) : () => {},
+                            onDragLeave: this.columnDragLeave,
+                            onDragEnter: this.columnDragEnter,
+                            onDragOver: this.columnDragOver,
+                            onDrop: this.columnDrop.bind(this, dateValueId)
+                        },
+                        React.createElement('input', { id: dateValueId, type: 'hidden', value: date })
+                    ));
+                } else {
+                    taskDates.push(React.createElement(
+                        'td',
+                        { className: 'dropZoneColumn',
+                            key: tdIndex,
+                            id: tdId,
+                            onDragLeave: this.columnDragLeave,
+                            onDragEnter: this.columnDragEnter,
+                            onDragOver: this.columnDragOver,
+                            onDrop: this.columnDrop.bind(this, dateValueId)
+                        },
+                        React.createElement('input', { id: dateValueId, type: 'hidden', value: date })
+                    ));
+                }
+            }, this);
 
             taskRows.push(React.createElement(
                 'tr',
-                { style: taskRowStyle, key: index, onClick: this.renderTaskPopup.bind(this, index) },
+                { key: task._id },
                 React.createElement(
                     'td',
                     null,
@@ -25406,19 +25523,23 @@ let GanttChart = React.createClass({
             ));
         };
 
-        tasksObject.taskList.forEach(tmpRender.bind(this));
+        taskList.forEach(tmpRender.bind(this));
 
         return taskRows;
     },
+
     // Create table structure
     renderChartTable() {
         let tableThStyle = {
             width: "5%",
             whiteSpace: "nowrap"
         };
+        let tableStyle = {
+            width: "100%"
+        };
         return React.createElement(
             'table',
-            { className: 'table table-bordered table-hover table-striped' },
+            { style: tableStyle, className: 'table table-bordered table-hover table-striped' },
             React.createElement(
                 'thead',
                 null,
@@ -25440,6 +25561,7 @@ let GanttChart = React.createClass({
             )
         );
     },
+
     render() {
         let containerStyle = {
             maxWidth: "1100px",
@@ -25556,7 +25678,7 @@ let GanttChart = React.createClass({
             ),
             React.createElement(TaskPopup, { popupTask: this.state.popupTask,
                 popupShow: this.state.popupShow,
-                onClickClose: this.closeTaskPopup.bind(this),
+                onClickClose: this.closeTaskPopup,
                 taskFieldsRules: this.props.taskFieldsRules,
                 saveTaskCb: this.saveTaskData })
         );
