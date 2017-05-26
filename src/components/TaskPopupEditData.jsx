@@ -61,4 +61,10 @@ let TaskPopupEditData = React.createClass({
     }
 });
 
+TaskPopupEditData.PropTypes = {
+    taskFieldsRules: React.PropTypes.object,
+    popupTask: React.PropTypes.object,
+    updateTaskStateCb: React.PropTypes.func
+};
+
 module.exports = TaskPopupEditData;

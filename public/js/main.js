@@ -25236,6 +25236,12 @@ module.exports = require('./lib/React');
 let React = require('react');
 let Moment = require('moment');
 let TaskPopup = require('./TaskPopup.jsx');
+// Table components
+let TableRow = require('./table-components/TableRow.jsx');
+let TaskTitleTd = require('./table-components/TaskTitleTd.jsx');
+let TaskDraggableTd = require('./table-components/TaskDraggableTd.jsx');
+let TaskNotDraggableTd = require('./table-components/TaskNotDraggableTd.jsx');
+let TaskPlainTd = require('./table-components/TaskPlainTd.jsx');
 
 let generateId = function () {
     return Math.random().toString(36).substring(11);
@@ -25341,7 +25347,7 @@ let GanttChart = React.createClass({
             momentStartDate.add(1, 'day');
             return this.generateTimeRange(momentStartDate, momentEndDate, result);
         } else {
-            result.push(momentStartDate.unix());
+            result.push(momentEndDate.unix());
             return result;
         }
     },
@@ -25367,35 +25373,18 @@ let GanttChart = React.createClass({
             this.props.onSaveTaskCb(taskObject);
         }
     },
-    // Generate table header for time range
-    renderChartHeaderColumns() {
-        let tableThStyle = {
-            width: "1%",
-            whiteSpace: "nowrap"
-        };
-        let rows = [];
-        let timeRange = this.state.timeRange;
-        // Generate table header element foreach date
-        timeRange.forEach(function (date, index) {
-            rows.push(React.createElement(
-                'th',
-                { style: tableThStyle, key: index },
-                Moment.unix(date).format('DD MMM YYYY')
-            ));
-        });
-
-        return rows;
-    },
-    /*---------------------- Functions for task dragging --------------------*/
+    /*---------------------- Functions for task dragging - drag/drop events --------------------*/
     columnDragStart(dateValueId, e) {
         const tableCellTaskId = e.target.id.split('-')[1];
         const columnDueDate = parseInt(document.getElementById(dateValueId).value);
         let task = this.state.taskList[tableCellTaskId];
 
+        // Set to state that task is dragged from start date
         if (columnDueDate === task.startDate) {
             this.setState({ draggableTaskDate: true });
         }
 
+        // Set to state that task is dragged from end date
         if (columnDueDate === task.endDate) {
             this.setState({ draggableTaskDate: false });
         }
@@ -25409,7 +25398,6 @@ let GanttChart = React.createClass({
             e.target.classList.add("dragged");
             e.target.style.backgroundColor = "#265A88";
             e.target.style.opacity = .5;
-            this.setState({ cellToDropTaskId: tableCellTaskId });
         }
     },
     // On drag leave event
@@ -25422,6 +25410,9 @@ let GanttChart = React.createClass({
             if (e.target.className === "draggable") {
                 e.target.style.backgroundColor = "#265A88";
             }
+            if (e.target.className === "notDraggable") {
+                e.target.style.backgroundColor = "#0077b3";
+            }
         }
     },
     // On drag over event
@@ -25433,97 +25424,109 @@ let GanttChart = React.createClass({
     // When due date dropped update task start or end due date
     columnDrop(dateValueId, e) {
         const tableCellTaskId = e.target.id.split('-')[1];
-        const columnDueDate = document.getElementById(dateValueId);
+        const columnDueDate = parseInt(document.getElementById(dateValueId).value);
         let task = this.state.taskList[tableCellTaskId];
-        if (this.state.cellToDropTaskId === tableCellTaskId) {
+        if (this.state.draggableTaskId === tableCellTaskId) {
             e.target.style.removeProperty("opacity");
-            if (columnDueDate.value > task.endDate) {
-                task.endDate = columnDueDate.value;
+            // Set task start date or end date based on which column is drag date dropped
+            if (columnDueDate > task.endDate) {
+                task.endDate = columnDueDate;
             }
-            if (columnDueDate.value < task.startDate) {
-                task.startDate = columnDueDate.value;
+            if (columnDueDate < task.startDate) {
+                task.startDate = columnDueDate;
             }
-            if (columnDueDate.value > task.startDate && columnDueDate.value < task.endDate && this.state.draggableTaskDate) {
-                task.startDate = columnDueDate.value;
-            } else if (columnDueDate.value > task.startDate && columnDueDate.value < task.endDate && !this.state.draggableTaskDate) {
-                task.endDate = columnDueDate.value;
+            if (columnDueDate > task.startDate && columnDueDate < task.endDate && this.state.draggableTaskDate) {
+                task.startDate = columnDueDate;
+            } else if (columnDueDate > task.startDate && columnDueDate < task.endDate && !this.state.draggableTaskDate) {
+                task.endDate = columnDueDate;
             }
         }
+
         this.saveTaskData(task);
         this.state.draggableTaskDate = null;
     },
+    // Generate table header for time range
+    renderChartHeaderColumns() {
+        let tableThStyle = {
+            width: "5%",
+            whiteSpace: "nowrap"
+        };
+        let rows = [React.createElement(
+            'th',
+            { style: tableThStyle, key: 'tasksHeaderCell' },
+            'Tasks'
+        )];
+        let timeRange = this.state.timeRange;
+        // Generate table header element foreach date
+        timeRange.forEach(function (date, index) {
+            rows.push(React.createElement(
+                'th',
+                { style: tableThStyle, key: index },
+                Moment.unix(date).format('DD MMM YYYY')
+            ));
+        });
 
+        return rows;
+    },
     // Generate task rows with time range
     renderTaskRows() {
-        let draggableColumnStyle = {
-            backgroundColor: "#265A88",
-            borderRight: "none",
-            borderLeft: "none",
-            borderRadius: "2px",
-            cursor: "pointer",
-            height: "100%",
-            backgroundClip: "padding-box"
-        };
-
         let taskRows = [];
         let timeRange = this.state.timeRange;
         let taskList = Object.values(this.state.taskList);
         // Sort task list by start due date
         /*taskList = taskList.sort(function (a, b) {
-            return a.startDate - b.startDate;
-        });*/
+         return a.startDate - b.startDate;
+         });*/
         // Generate row foreach task
         const tmpRender = function (task) {
-            let taskDates = [];
+            let taskRow = [React.createElement(TaskTitleTd, { key: task.title, title: task.title })];
             timeRange.forEach(function (date, tdIndex) {
                 const tdId = tdIndex + '-' + task._id;
                 const dateValueId = task._id + '-' + tdIndex;
-                // Allow only start and end due date to be draggable on chart
-                let draggable = false;
-                if (date === task.startDate || date === task.endDate) {
-                    draggable = true;
-                }
-                if (Moment.unix(date) >= Moment.unix(task.startDate) && Moment.unix(date) <= Moment.unix(task.endDate)) {
-                    taskDates.push(React.createElement(
-                        'td',
-                        { className: 'draggable',
-                            style: draggableColumnStyle,
-                            key: tdIndex,
-                            id: tdId,
-                            onClick: this.renderTaskPopup,
-                            onDragStart: draggable ? this.columnDragStart.bind(this, dateValueId) : () => {},
-                            onDragLeave: this.columnDragLeave,
-                            onDragEnter: this.columnDragEnter,
-                            onDragOver: this.columnDragOver,
-                            onDrop: this.columnDrop.bind(this, dateValueId)
-                        },
-                        React.createElement('input', { id: dateValueId, type: 'hidden', value: date })
-                    ));
+
+                if (date > task.startDate && date < task.endDate) {
+                    taskRow.push(React.createElement(TaskNotDraggableTd, { className: 'notDraggable',
+                        key: tdIndex,
+                        keyProp: tdIndex,
+                        id: tdId,
+                        inputId: dateValueId,
+                        date: date,
+                        onClick: this.renderTaskPopup,
+                        onDragLeave: this.columnDragLeave,
+                        onDragEnter: this.columnDragEnter,
+                        onDragOver: this.columnDragOver,
+                        onDrop: this.columnDrop.bind(this, dateValueId) }));
+                } else if (date === task.startDate || date === task.endDate) {
+                    taskRow.push(React.createElement(TaskDraggableTd, { className: 'draggable',
+                        key: tdIndex,
+                        keyProp: tdIndex,
+                        id: tdId,
+                        inputId: dateValueId,
+                        date: date,
+                        onClick: this.renderTaskPopup,
+                        onDragStart: this.columnDragStart.bind(this, dateValueId),
+                        onDragLeave: this.columnDragLeave,
+                        onDragEnter: this.columnDragEnter,
+                        onDragOver: this.columnDragOver,
+                        onDrop: this.columnDrop.bind(this, dateValueId) }));
                 } else {
-                    taskDates.push(React.createElement(
-                        'td',
-                        { className: 'dropZoneColumn',
-                            key: tdIndex,
-                            id: tdId,
-                            onDragLeave: this.columnDragLeave,
-                            onDragEnter: this.columnDragEnter,
-                            onDragOver: this.columnDragOver,
-                            onDrop: this.columnDrop.bind(this, dateValueId)
-                        },
-                        React.createElement('input', { id: dateValueId, type: 'hidden', value: date })
-                    ));
+                    taskRow.push(React.createElement(TaskPlainTd, { className: 'plainTd',
+                        key: tdIndex,
+                        keyProp: tdIndex,
+                        id: tdId,
+                        inputId: dateValueId,
+                        date: date,
+                        onDragLeave: this.columnDragLeave,
+                        onDragEnter: this.columnDragEnter,
+                        onDragOver: this.columnDragOver,
+                        onDrop: this.columnDrop.bind(this, dateValueId) }));
                 }
             }, this);
 
             taskRows.push(React.createElement(
-                'tr',
-                { key: task._id },
-                React.createElement(
-                    'td',
-                    null,
-                    task.title
-                ),
-                taskDates
+                TableRow,
+                { key: task._id, keyProp: task._id },
+                taskRow
             ));
         };
 
@@ -25534,10 +25537,6 @@ let GanttChart = React.createClass({
 
     // Create table structure
     renderChartTable() {
-        let tableThStyle = {
-            width: "5%",
-            whiteSpace: "nowrap"
-        };
         let tableStyle = {
             width: "100%"
         };
@@ -25548,13 +25547,8 @@ let GanttChart = React.createClass({
                 'thead',
                 null,
                 React.createElement(
-                    'tr',
-                    null,
-                    React.createElement(
-                        'th',
-                        { style: tableThStyle },
-                        'Tasks'
-                    ),
+                    TableRow,
+                    { key: 'tasksHeader', keyProp: 'tasksHeader' },
                     this.renderChartHeaderColumns()
                 )
             ),
@@ -25729,7 +25723,7 @@ GanttChart.propTypes = {
 
 module.exports = GanttChart;
 
-},{"./TaskPopup.jsx":184,"moment":24,"react":182}],184:[function(require,module,exports){
+},{"./TaskPopup.jsx":184,"./table-components/TableRow.jsx":187,"./table-components/TaskDraggableTd.jsx":188,"./table-components/TaskNotDraggableTd.jsx":189,"./table-components/TaskPlainTd.jsx":190,"./table-components/TaskTitleTd.jsx":191,"moment":24,"react":182}],184:[function(require,module,exports){
 let React = require('react');
 let TaskPopupViewData = require('./TaskPopupViewData.jsx');
 let TaskPopupEditData = require('./TaskPopupEditData.jsx');
@@ -25873,6 +25867,14 @@ let TaskPopup = React.createClass({
     }
 });
 
+TaskPopup.propTypes = {
+    popupTask: React.PropTypes.object,
+    popupShow: React.PropTypes.bool,
+    onClickClose: React.PropTypes.func,
+    taskFieldRules: React.PropTypes.object,
+    saveTaskStateCb: React.PropTypes.func
+};
+
 module.exports = TaskPopup;
 
 },{"./TaskPopupEditData.jsx":185,"./TaskPopupViewData.jsx":186,"react":182}],185:[function(require,module,exports){
@@ -25947,6 +25949,12 @@ let TaskPopupEditData = React.createClass({
     }
 });
 
+TaskPopupEditData.PropTypes = {
+    taskFieldsRules: React.PropTypes.object,
+    popupTask: React.PropTypes.object,
+    updateTaskStateCb: React.PropTypes.func
+};
+
 module.exports = TaskPopupEditData;
 
 },{"react":182}],186:[function(require,module,exports){
@@ -26004,13 +26012,192 @@ let TaskPopupViewData = React.createClass({
     }
 });
 
+TaskPopupViewData.propTypes = {
+    taskFieldsRules: React.PropTypes.object,
+    popupTask: React.PropTypes.object
+};
+
 module.exports = TaskPopupViewData;
 
 },{"moment":24,"react":182}],187:[function(require,module,exports){
+let React = require('react');
+
+let TableRow = React.createClass({
+    displayName: 'TableRow',
+
+    render() {
+        return React.createElement(
+            'tr',
+            { key: this.props.keyProp },
+            this.props.children
+        );
+    }
+});
+
+TableRow.PropTypes = {
+    keyProp: React.PropTypes.string
+};
+
+module.exports = TableRow;
+
+},{"react":182}],188:[function(require,module,exports){
+let React = require('react');
+
+let TaskDraggableTd = React.createClass({
+    displayName: "TaskDraggableTd",
+
+    render() {
+        let taskDraggableTdStyle = {
+            backgroundColor: "#265A88",
+            borderRight: "none",
+            borderLeft: "none",
+            borderRadius: "2px",
+            cursor: "pointer",
+            height: "100%",
+            backgroundClip: "padding-box"
+        };
+        return React.createElement(
+            "td",
+            { draggable: "true",
+                className: this.props.className,
+                style: taskDraggableTdStyle,
+                key: this.props.keyProp,
+                id: this.props.id,
+                onClick: this.props.onClick,
+                onDragStart: this.props.onDragStart,
+                onDragLeave: this.props.onDragLeave,
+                onDragEnter: this.props.onDragEnter,
+                onDragOver: this.props.onDragOver,
+                onDrop: this.props.onDrop },
+            React.createElement("input", { id: this.props.inputId, type: "hidden", value: this.props.date })
+        );
+    }
+});
+
+TaskDraggableTd.PropTypes = {
+    className: React.PropTypes.string,
+    keyProp: React.PropTypes.string,
+    id: React.PropTypes.string,
+    onClick: React.PropTypes.func,
+    onDragStart: React.PropTypes.func,
+    onDragEnter: React.PropTypes.func,
+    onDragOver: React.PropTypes.func,
+    onDrop: React.PropTypes.func,
+    inputId: React.PropTypes.string,
+    date: React.PropTypes.number
+};
+
+module.exports = TaskDraggableTd;
+
+},{"react":182}],189:[function(require,module,exports){
+let React = require('react');
+
+let TaskNotDraggableTd = React.createClass({
+    displayName: "TaskNotDraggableTd",
+
+    render() {
+        let taskNotDraggableTdStyle = {
+            backgroundColor: "#0077b3",
+            borderRight: "none",
+            borderLeft: "none",
+            borderRadius: "2px",
+            cursor: "pointer",
+            height: "100%",
+            backgroundClip: "padding-box"
+        };
+        return React.createElement(
+            "td",
+            { draggable: "false",
+                className: this.props.className,
+                style: taskNotDraggableTdStyle,
+                key: this.props.keyProp,
+                id: this.props.id,
+                onClick: this.props.onClick,
+                onDragLeave: this.props.onDragLeave,
+                onDragEnter: this.props.onDragEnter,
+                onDragOver: this.props.onDragOver,
+                onDrop: this.props.onDrop },
+            React.createElement("input", { id: this.props.inputId, type: "hidden", value: this.props.date })
+        );
+    }
+});
+
+TaskNotDraggableTd.PropTypes = {
+    className: React.PropTypes.string,
+    keyProp: React.PropTypes.string,
+    id: React.PropTypes.string,
+    onClick: React.PropTypes.func,
+    onDragStart: React.PropTypes.func,
+    onDragEnter: React.PropTypes.func,
+    onDragOver: React.PropTypes.func,
+    onDrop: React.PropTypes.func,
+    inputId: React.PropTypes.string,
+    date: React.PropTypes.number
+};
+
+module.exports = TaskNotDraggableTd;
+
+},{"react":182}],190:[function(require,module,exports){
+let React = require('react');
+
+let TaskPlainTd = React.createClass({
+    displayName: "TaskPlainTd",
+
+    render() {
+        return React.createElement(
+            "td",
+            { className: this.props.className,
+                key: this.props.keyProp,
+                id: this.props.id,
+                onDragLeave: this.props.onDragLeave,
+                onDragEnter: this.props.onDragEnter,
+                onDragOver: this.props.onDragOver,
+                onDrop: this.props.onDrop
+            },
+            React.createElement("input", { id: this.props.inputId, type: "hidden", value: this.props.date })
+        );
+    }
+});
+
+TaskPlainTd.PropTypes = {
+    className: React.PropTypes.string,
+    keyProp: React.PropTypes.string,
+    id: React.PropTypes.string,
+    onDragEnter: React.PropTypes.func,
+    onDragOver: React.PropTypes.func,
+    onDrop: React.PropTypes.func,
+    inputId: React.PropTypes.string,
+    date: React.PropTypes.number
+};
+
+module.exports = TaskPlainTd;
+
+},{"react":182}],191:[function(require,module,exports){
+let React = require('react');
+
+let TaskTitleTd = React.createClass({
+  displayName: 'TaskTitleTd',
+
+  render() {
+    return React.createElement(
+      'td',
+      null,
+      this.props.title
+    );
+  }
+});
+
+TaskTitleTd.PropTypes = {
+  title: React.PropTypes.string
+};
+
+module.exports = TaskTitleTd;
+
+},{"react":182}],192:[function(require,module,exports){
 let React = require('react');
 let ReactDOM = require('react-dom');
 let GanttChart = require('./components/GanttChart.jsx');
 
 ReactDOM.render(React.createElement(GanttChart, null), document.getElementById("container"));
 
-},{"./components/GanttChart.jsx":183,"react":182,"react-dom":31}]},{},[187]);
+},{"./components/GanttChart.jsx":183,"react":182,"react-dom":31}]},{},[192]);
