@@ -44864,9 +44864,15 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 (0, _reactTapEventPlugin2.default)();
 
+var muiTheme = (0, _getMuiTheme2.default)({
+    datePicker: {
+        selectColor: "#265A88"
+    }
+});
+
 _reactDom2.default.render(_react2.default.createElement(
     _MuiThemeProvider2.default,
-    { muiTheme: (0, _getMuiTheme2.default)() },
+    { muiTheme: muiTheme },
     _react2.default.createElement(_GanttChart2.default, null)
 ), document.getElementById("container"));
 

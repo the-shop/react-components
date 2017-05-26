@@ -7,8 +7,14 @@ import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
 
 injectTapEventPlugin();
 
+const muiTheme = getMuiTheme({
+    datePicker: {
+        selectColor: "#265A88",
+    },
+});
+
 ReactDOM.render(
-    <MuiThemeProvider muiTheme={getMuiTheme()}>
+    <MuiThemeProvider muiTheme={muiTheme}>
         <GanttChart />
     </MuiThemeProvider>
     , document.getElementById("container")
