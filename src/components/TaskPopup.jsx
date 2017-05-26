@@ -1,6 +1,6 @@
-let React = require('react');
-let TaskPopupViewData = require('./TaskPopupViewData.jsx');
-let TaskPopupEditData = require('./TaskPopupEditData.jsx');
+import React from 'react';
+import TaskPopupViewData from './TaskPopupViewData.jsx';
+import TaskPopupEditData from './TaskPopupEditData.jsx';
 
 let TaskPopup = React.createClass({
     getInitialState() {
@@ -126,4 +126,4 @@ TaskPopup.propTypes = {
     saveTaskStateCb: React.PropTypes.func
 };
 
-module.exports = TaskPopup;
+export default TaskPopup;

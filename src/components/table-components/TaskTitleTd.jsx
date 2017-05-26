@@ -1,4 +1,4 @@
-let React = require('react');
+import React from 'react';
 
 let TaskTitleTd = React.createClass({
    render() {
@@ -14,4 +14,4 @@ TaskTitleTd.PropTypes = {
   title: React.PropTypes.string
 };
 
-module.exports = TaskTitleTd;
+export default TaskTitleTd;

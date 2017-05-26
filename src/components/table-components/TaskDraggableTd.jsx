@@ -1,4 +1,4 @@
-let React = require('react');
+import React from 'react';
 
 let TaskDraggableTd = React.createClass({
    render() {
@@ -42,4 +42,4 @@ TaskDraggableTd.PropTypes = {
     date: React.PropTypes.number
 };
 
-module.exports = TaskDraggableTd;
+export default TaskDraggableTd;

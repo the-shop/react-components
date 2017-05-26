@@ -1,4 +1,4 @@
-let React = require('react');
+import React from 'react';
 
 let TaskPopupEditData = React.createClass({
     onFieldChange(field, e) {
@@ -67,4 +67,4 @@ TaskPopupEditData.PropTypes = {
     updateTaskStateCb: React.PropTypes.func
 };
 
-module.exports = TaskPopupEditData;
+export default TaskPopupEditData;
