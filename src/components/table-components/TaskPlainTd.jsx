@@ -1,4 +1,4 @@
-let React = require('react');
+import React from 'react';
 
 let TaskPlainTd = React.createClass({
     render() {
@@ -28,4 +28,4 @@ TaskPlainTd.PropTypes = {
     date: React.PropTypes.number
 };
 
-module.exports = TaskPlainTd;
+export default TaskPlainTd;

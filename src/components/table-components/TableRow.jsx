@@ -1,4 +1,4 @@
-let React = require('react');
+import React from 'react';
 
 let TableRow = React.createClass({
    render() {
@@ -14,4 +14,4 @@ TableRow.PropTypes = {
     keyProp: React.PropTypes.string
 };
 
-module.exports = TableRow;
+export default TableRow;

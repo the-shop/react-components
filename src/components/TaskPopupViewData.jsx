@@ -1,5 +1,5 @@
-let React = require('react');
-let Moment = require('moment');
+import React from 'react';
+import Moment from 'moment';
 
 let TaskPopupViewData = React.createClass({
     createDataList() {
@@ -7,7 +7,7 @@ let TaskPopupViewData = React.createClass({
             fontWeight: 600
         };
         let fieldRules = this.props.taskFieldsRules.taskOptionalFieldsRules;
-        dataList = [];
+        let dataList = [];
         let task = this.props.popupTask;
 
         // Generate list items for each task field except _id
@@ -40,4 +40,4 @@ TaskPopupViewData.propTypes = {
     popupTask: React.PropTypes.object
 };
 
-module.exports = TaskPopupViewData;
+export default TaskPopupViewData;
